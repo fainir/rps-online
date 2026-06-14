@@ -1,0 +1,19 @@
+{
+  "name": "rps-online",
+  "version": "1.0.0",
+  "description": "Rock Paper Scissors Online — a Stratego-with-RPS strategy game in an ICQ-style window. Create a game, share the link, play a friend.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node src/game.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

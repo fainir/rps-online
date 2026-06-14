@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>RPS Online — Rock Paper Scissors</title>
+<meta name="description" content="Rock Paper Scissors Online — a Stratego-style strategy game. Create a game and challenge a friend." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="desktop">
+  <main class="icq-window" id="window" role="application" aria-label="RPS Online game window">
+
+    <!-- Title bar -->
+    <header class="titlebar">
+      <div class="title-left">
+        <span class="title-flower" aria-hidden="true">✿</span>
+        <span class="title-text">RPS Online</span>
+      </div>
+      <div class="title-right">
+        <button class="win-btn" id="btn-mute" title="Toggle sound" aria-label="Toggle sound">♪</button>
+        <span class="win-btn" aria-hidden="true">_</span>
+        <span class="win-btn" aria-hidden="true">▢</span>
+        <span class="win-btn win-x" aria-hidden="true">✕</span>
+      </div>
+    </header>
+
+    <div class="window-body">
+      <!-- Main pane (screens swap here) -->
+      <section class="main-pane">
+
+        <!-- ===== INTRO ===== -->
+        <div class="screen" id="screen-intro" data-active="true">
+          <h1 class="game-title"><span class="t-rock">Rock</span> <span class="t-paper">Paper</span> <span class="t-sci">Scissors</span></h1>
+          <div class="intro-grid">
+            <div class="intro-field">
+              <label for="name-input">Your name</label>
+              <input id="name-input" maxlength="20" placeholder="Player" autocomplete="off" />
+            </div>
+            <p class="choose-label">Choose your team</p>
+            <div class="team-pick">
+              <button class="team-card team-red" id="pick-red" aria-pressed="true">
+                <span class="avatar avatar-red" aria-hidden="true"><span class="a-face"></span></span>
+                <span class="team-name">Red</span>
+              </button>
+              <button class="team-card team-blue" id="pick-blue" aria-pressed="false">
+                <span class="avatar avatar-blue" aria-hidden="true"><span class="a-face"></span></span>
+                <span class="team-name">Blue</span>
+              </button>
+            </div>
+            <button class="big-btn" id="btn-create">Create Game ▶</button>
+            <div class="join-row">
+              <input id="code-input" maxlength="5" placeholder="CODE" autocomplete="off" />
+              <button class="ghost-btn" id="btn-join">Join</button>
+            </div>
+            <p class="hint" id="intro-hint">Create a game, then share the link with a friend.</p>
+          </div>
+        </div>
+
+        <!-- ===== BOARD ===== -->
+        <div class="screen" id="screen-board">
+          <div class="name-tag name-top" id="name-top">Opponent</div>
+          <div class="board-wrap">
+            <div class="board" id="board" aria-label="Game board"></div>
+
+            <!-- overlays -->
+            <div class="overlay" id="overlay-wait">
+              <div class="overlay-card">
+                <div class="spinner" aria-hidden="true"></div>
+                <p class="ov-title">Waiting for opponent…</p>
+                <div class="share-box">
+                  <input id="share-link" readonly />
+                  <button id="btn-copy" class="ghost-btn">Copy</button>
+                </div>
+                <p class="ov-code">Room code: <strong id="room-code">—</strong></p>
+              </div>
+            </div>
+
+            <div class="overlay" id="overlay-over">
+              <div class="overlay-card">
+                <h2 class="over-title">Game Over</h2>
+                <p class="over-winner" id="over-winner">—</p>
+                <button class="big-btn" id="btn-rematch">Play Again</button>
+                <p class="hint" id="rematch-hint"></p>
+              </div>
+            </div>
+          </div>
+          <div class="name-tag name-bottom" id="name-bottom">You</div>
+
+          <!-- Tiebreak modal -->
+          <div class="tiebreak" id="tiebreak" aria-live="polite">
+            <div class="tb-card">
+              <p class="tb-title">TIE! Throw to break it</p>
+              <div class="tb-hands">
+                <div class="tb-hand tb-you" id="tb-you">?</div>
+                <span class="tb-vs">VS</span>
+                <div class="tb-hand tb-opp" id="tb-opp">?</div>
+              </div>
+              <div class="tb-buttons">
+                <button class="tb-btn" data-choice="rock" title="Rock">✊</button>
+                <button class="tb-btn" data-choice="paper" title="Paper">✋</button>
+                <button class="tb-btn" data-choice="scissors" title="Scissors">✌️</button>
+              </div>
+              <p class="tb-status" id="tb-status">Pick your throw</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right sidebar -->
+      <aside class="sidebar">
+        <div class="logo-badge">
+          <span class="logo-rps">RPS</span><span class="logo-online">Online</span>
+        </div>
+        <div class="battle-display" id="battle-display">
+          <div class="bd-empty">Battles appear here</div>
+        </div>
+        <div class="turn-orb" id="turn-orb" title="Whose turn">
+          <span id="turn-text">—</span>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Status / chat bar -->
+    <footer class="statusbar">
+      <div class="status-text" id="status-text">Welcome to RPS Online</div>
+      <div class="setup-controls" id="setup-controls" hidden>
+        <button class="ghost-btn" id="btn-shuffle">⟳ Shuffle</button>
+        <button class="big-btn small" id="btn-ready">Ready ✓</button>
+      </div>
+      <div class="chat-controls" id="chat-controls" hidden>
+        <input id="chat-input" maxlength="200" placeholder="Say something…" autocomplete="off" />
+        <button class="send-btn" id="btn-send">Send</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- floating chat log -->
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+</div>
+
+<script src="sfx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
