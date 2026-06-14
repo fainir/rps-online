@@ -54,6 +54,7 @@
   var holdTiebreak = false;   // keep the tiebreak modal up briefly to reveal the deciding throw
   var tbHoldTimer = null;
   var fxQueue = [];           // per-piece animations applied AFTER render (hop/clash)
+  var rejoining = false;      // true while silently reconnecting to a saved game
 
   // ---- WebSocket ----
   function wsUrl() {
@@ -95,13 +96,30 @@
     else sendQueue.push(obj);
   }
 
+  // ---- session persistence (survive a refresh / dropped tab) ----
+  function saveSession() {
+    try {
+      localStorage.setItem('rps_session', JSON.stringify({
+        code: roomCode, team: myTeam, token: myToken, name: myName, ts: Date.now()
+      }));
+    } catch (e) {}
+  }
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem('rps_session') || 'null');
+      if (s && s.code && s.token && (Date.now() - (s.ts || 0)) < 30 * 60 * 1000) return s;
+    } catch (e) {}
+    return null;
+  }
+  function clearSession() { try { localStorage.removeItem('rps_session'); } catch (e) {} }
+
   // ---- message router ----
   function onMessage(msg) {
     switch (msg.type) {
       case 'created':
-        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; showShare(); break;
+        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; saveSession(); showShare(); break;
       case 'joined':
-        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; break;
+        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; rejoining = false; saveSession(); break;
       case 'state':
         applyState(msg); break;
       case 'chat':
@@ -117,6 +135,9 @@
   }
 
   function onError(err) {
+    if (err === 'no-such-room' || err === 'room-full') clearSession();
+    // if a silent auto-rejoin failed, just drop the user back on a clean intro
+    if (rejoining) { rejoining = false; leaveToIntro(); return; }
     var map = {
       'no-such-room': 'No game found with that code.',
       'room-full': 'That game is already full.',
@@ -563,6 +584,7 @@
   }
   // Hard reset back to the intro screen (leave the room entirely).
   function leaveToIntro() {
+    clearSession();
     roomCode = null; myTeam = null; myToken = null; view = null; selected = null; swapPick = null;
     $('overlay-over').dataset.show = 'false';
     $('rematch-hint').textContent = '';
@@ -676,8 +698,22 @@
     }
   }
 
+  // If we have a recent saved game (refresh / dropped tab), silently reconnect to our seat.
+  function maybeRejoin() {
+    var s = loadSession();
+    if (!s) return;
+    // Only reconnect to the same room the link points at (if any).
+    var room = new URLSearchParams(location.search).get('room');
+    if (room && room.toUpperCase() !== s.code) return;
+    rejoining = true;
+    myName = s.name || myName;
+    setStatus('Reconnecting to your game…');
+    send({ type: 'join', code: s.code, name: s.name, token: s.token });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initUI();
     connect();
+    maybeRejoin();
   });
 })();
