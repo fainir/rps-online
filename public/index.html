@@ -21,6 +21,7 @@
         <span class="title-text">RPS Online</span>
       </div>
       <div class="title-right">
+        <button class="win-btn" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <button class="win-btn" id="btn-mute" title="Toggle sound" aria-label="Toggle sound">♪</button>
         <span class="win-btn" aria-hidden="true">_</span>
         <span class="win-btn" aria-hidden="true">▢</span>
@@ -83,7 +84,10 @@
               <div class="overlay-card">
                 <h2 class="over-title">Game Over</h2>
                 <p class="over-winner" id="over-winner">—</p>
-                <button class="big-btn" id="btn-rematch">Play Again</button>
+                <div class="over-btns">
+                  <button class="big-btn small" id="btn-rematch">Play Again</button>
+                  <button class="ghost-btn" id="btn-newgame">New Game</button>
+                </div>
                 <p class="hint" id="rematch-hint"></p>
               </div>
             </div>
@@ -132,10 +136,27 @@
         <button class="big-btn small" id="btn-ready">Ready ✓</button>
       </div>
       <div class="chat-controls" id="chat-controls" hidden>
+        <button class="ghost-btn tiny" id="btn-resign" title="Forfeit the game" hidden>Resign</button>
         <input id="chat-input" maxlength="200" placeholder="Say something…" autocomplete="off" />
         <button class="send-btn" id="btn-send">Send</button>
       </div>
     </footer>
+
+    <!-- Rules / how-to-play (window-level overlay, available on every screen) -->
+    <div class="overlay overlay-window" id="overlay-rules">
+      <div class="overlay-card rules-card">
+        <h2 class="ov-title">How to play</h2>
+        <ul class="rules-list">
+          <li>Each piece is secretly <b>Rock ✊</b>, <b>Paper ✋</b> or <b>Scissors ✌️</b> — you see yours, your rival sees blanks.</li>
+          <li>Move one piece one square (up/down/left/right) per turn.</li>
+          <li>Move onto a rival to <b>attack</b>: Rock beats Scissors, Scissors beats Paper, Paper beats Rock.</li>
+          <li>A <b>tie</b> starts a live throw-off — both players pick a hand until someone wins.</li>
+          <li>The <b>Trap 💣</b> destroys any attacker. Your <b>Flag 🚩</b> can't move.</li>
+          <li><b>Win</b> by capturing the rival's flag, or leaving them with no legal move.</li>
+        </ul>
+        <button class="big-btn small" id="btn-rules-close">Got it</button>
+      </div>
+    </div>
   </main>
 
   <!-- floating chat log -->

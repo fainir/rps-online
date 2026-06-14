@@ -19,9 +19,9 @@
   var connected = { red: false, blue: false };
   var selected = null;        // selected piece id (playing)
   var swapPick = null;        // first piece picked for swap (setup)
-  var prevPieceIds = {};      // id -> true, for death animations
-  var lastPhase = null;
-  var iThrewThisRound = false;
+  var myToken = null;         // per-seat reconnect token from the server
+  var holdTiebreak = false;   // keep the tiebreak modal up briefly to reveal the deciding throw
+  var tbHoldTimer = null;
 
   // ---- WebSocket ----
   function wsUrl() {
@@ -54,7 +54,7 @@
       tries++;
       if (socketReady) {
         clearInterval(iv);
-        send({ type: 'join', code: roomCode, name: myName });
+        send({ type: 'join', code: roomCode, name: myName, token: myToken });
       } else if (tries > 8) { clearInterval(iv); }
     }, 400);
   }
@@ -67,15 +67,17 @@
   function onMessage(msg) {
     switch (msg.type) {
       case 'created':
-        roomCode = msg.code; myTeam = msg.you; showShare(); break;
+        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; showShare(); break;
       case 'joined':
-        roomCode = msg.code; myTeam = msg.you; break;
+        roomCode = msg.code; myTeam = msg.you; myToken = msg.token || myToken; break;
       case 'state':
         applyState(msg); break;
       case 'chat':
         addChat(msg.from, msg.name, msg.text); SFX.message(); break;
       case 'reject':
-        flashStatus('Move not allowed (' + msg.error + ')'); break;
+        flashStatus('Move not allowed (' + msg.error + ')');
+        if (view && view.phase === 'tiebreak') renderTiebreak(); // re-enable throw buttons
+        break;
       case 'error':
         onError(msg.error); break;
       case 'pong': break;
@@ -108,15 +110,21 @@
   }
 
   function processEvents(events, prev) {
+    // A tiebreak that ends with a deciding throw (not another tie) — keep the modal up a
+    // moment so the player actually sees the winning hands before it closes.
+    var threw = events.some(function (e) { return e.type === 'tiebreak-throw'; });
+    var again = events.some(function (e) { return e.type === 'tiebreak-again'; });
     events.forEach(function (e) {
       switch (e.type) {
-        case 'opponent-joined': SFX.join(); flashStatus('Opponent joined!'); break;
+        case 'opponent-joined':
+          if (e.team !== myTeam) { SFX.join(); flashStatus('Opponent joined!'); }
+          break;
         case 'start': SFX.message(); break;
         case 'move': SFX.move(); break;
         case 'battle': onBattle(e); break;
-        case 'tiebreak-start': SFX.tie(); iThrewThisRound = false; flashStatus('TIE! Throw to break it'); break;
+        case 'tiebreak-start': SFX.tie(); resetTiebreakHands(true); flashStatus('TIE! Throw to break it'); break;
         case 'tiebreak-throw': onTiebreakThrow(e); break;
-        case 'tiebreak-again': iThrewThisRound = false; setTimeout(resetTiebreakHands, 700); break;
+        case 'tiebreak-again': setTimeout(function () { resetTiebreakHands(true); }, 800); break;
         case 'win': onWin(e); break;
         case 'turn': break;
         case 'opponent-left': flashStatus('Opponent disconnected…'); break;
@@ -124,6 +132,11 @@
         case 'rematch-vote': flashStatus('Opponent wants a rematch'); break;
       }
     });
+    if (threw && !again) {
+      holdTiebreak = true;
+      if (tbHoldTimer) clearTimeout(tbHoldTimer);
+      tbHoldTimer = setTimeout(function () { holdTiebreak = false; renderTiebreak(); }, 1200);
+    }
   }
 
   // ---- rendering ----
@@ -272,12 +285,14 @@
       else setStatus('Arrange your army, then press Ready');
     } else {
       setup.hidden = true; chat.hidden = false;
+      var inPlay = view.phase === 'playing' || view.phase === 'tiebreak';
+      $('btn-resign').hidden = !inPlay;
       if (view.phase === 'playing') {
         setStatus(view.turn === myTeam ? 'Your move' : 'Opponent is thinking…');
       } else if (view.phase === 'tiebreak') {
         setStatus('Tie-break in progress…');
       } else if (view.phase === 'over') {
-        setStatus('Game over');
+        setStatus(view.winner == null ? "It's a draw" : 'Game over');
       }
     }
   }
@@ -289,7 +304,7 @@
       orb.classList.add(view.turn);
       txt.textContent = (view.turn === myTeam ? 'YOUR\nTURN' : 'THEIR\nTURN');
     } else if (view.phase === 'setup') { txt.textContent = 'SET\nUP'; }
-    else if (view.phase === 'over') { txt.textContent = 'OVER'; }
+    else if (view.phase === 'over') { txt.textContent = view.winner == null ? 'DRAW' : 'OVER'; }
     else { txt.textContent = 'TIE!'; }
   }
 
@@ -297,39 +312,56 @@
   function renderOverlays() {
     var wait = $('overlay-wait'), over = $('overlay-over');
     var opp = myTeam === 'red' ? 'blue' : 'red';
-    var waiting = (view.phase === 'setup') && (!connected[opp] || !names[opp] || !readyState[opp]);
-    // Only show the share/wait overlay before opponent has joined; once both setting up, let them arrange.
+    // Only show the share/wait overlay before the opponent has joined; once both are in
+    // setup, let them arrange their armies freely.
     var showWait = view.phase === 'setup' && !connected[opp];
     wait.dataset.show = showWait ? 'true' : 'false';
     over.dataset.show = view.phase === 'over' ? 'true' : 'false';
     if (view.phase === 'over') {
       var w = view.winner;
-      var iWon = w === myTeam;
       var winnerEl = $('over-winner');
-      winnerEl.textContent = (names[w] || (w === 'red' ? 'Red' : 'Blue')) + ' wins!' + (iWon ? ' 🎉' : '');
-      winnerEl.className = 'over-winner ' + w;
+      if (w == null) {
+        winnerEl.textContent = "It's a draw!";
+        winnerEl.className = 'over-winner draw';
+      } else {
+        var iWon = w === myTeam;
+        winnerEl.textContent = (names[w] || (w === 'red' ? 'Red' : 'Blue')) + ' wins!' + (iWon ? ' 🎉' : '');
+        winnerEl.className = 'over-winner ' + w;
+      }
     }
   }
 
   // ---- tiebreak modal ----
+  function colorTiebreakHands() {
+    var opp = myTeam === 'red' ? 'blue' : 'red';
+    $('tb-you').style.boxShadow = '0 0 0 2px var(--' + (myTeam || 'red') + ')';
+    $('tb-opp').style.boxShadow = '0 0 0 2px var(--' + opp + ')';
+  }
   function renderTiebreak() {
     var tb = $('tiebreak');
+    var btns = tb.querySelectorAll('.tb-btn');
     if (view.phase === 'tiebreak') {
       tb.dataset.show = 'true';
-      var btns = tb.querySelectorAll('.tb-btn');
+      colorTiebreakHands();
       var threw = view.pending && view.pending.iThrew;
       btns.forEach(function (b) { b.disabled = !!threw; });
       $('tb-status').textContent = threw ? 'Waiting for opponent…' : 'Pick your throw';
       if (!threw) { $('tb-you').textContent = '?'; }
+    } else if (holdTiebreak) {
+      // keep showing the resolved throw briefly before the modal closes
+      tb.dataset.show = 'true';
+      btns.forEach(function (b) { b.disabled = true; });
+      $('tb-status').textContent = 'Decided!';
     } else {
       tb.dataset.show = 'false';
     }
   }
-  function resetTiebreakHands() {
-    $('tb-you').textContent = '?'; $('tb-opp').textContent = '?';
+  function resetTiebreakHands(both) {
+    $('tb-you').textContent = '?';
+    if (both) $('tb-opp').textContent = '?';
     var btns = $('tiebreak').querySelectorAll('.tb-btn');
     btns.forEach(function (b) { b.disabled = false; });
-    $('tb-status').textContent = 'Tie again! Throw once more';
+    $('tb-status').textContent = 'Pick your throw';
   }
   function onTiebreakThrow(e) {
     var myChoice = e.attackerTeam === myTeam ? e.attackerChoice : e.defenderChoice;
@@ -366,7 +398,9 @@
 
   function onWin(e) {
     setTimeout(function () {
-      if (e.winner === myTeam) SFX.win(); else SFX.lose();
+      if (e.winner == null) SFX.tie();          // draw
+      else if (e.winner === myTeam) SFX.win();
+      else SFX.lose();
     }, 250);
   }
 
@@ -447,7 +481,20 @@
   }
   function resetForRematch() {
     selected = null; swapPick = null;
+    $('rematch-hint').textContent = '';
     $('battle-display').innerHTML = '<div class="bd-empty">Battles appear here</div>';
+  }
+  // Hard reset back to the intro screen (leave the room entirely).
+  function leaveToIntro() {
+    roomCode = null; myTeam = null; myToken = null; view = null; selected = null; swapPick = null;
+    $('overlay-over').dataset.show = 'false';
+    $('rematch-hint').textContent = '';
+    $('battle-display').innerHTML = '<div class="bd-empty">Battles appear here</div>';
+    var hint = $('intro-hint'); hint.classList.remove('err');
+    hint.textContent = 'Create a game, then share the link with a friend.';
+    $('btn-create').textContent = 'Create Game ▶';
+    $('code-input').value = '';
+    showScreen('intro');
   }
 
   // ---- wire up UI ----
@@ -485,6 +532,15 @@
       send({ type: 'rematch' }); SFX.click();
       $('rematch-hint').textContent = 'Waiting for opponent to accept…';
     });
+    $('btn-newgame').addEventListener('click', function () { SFX.click(); leaveToIntro(); });
+    $('btn-resign').addEventListener('click', function () {
+      if (window.confirm('Resign this game? Your opponent wins.')) { send({ type: 'resign' }); SFX.click(); }
+    });
+
+    // rules / help
+    function showRules(s) { $('overlay-rules').dataset.show = s ? 'true' : 'false'; }
+    $('btn-help').addEventListener('click', function () { showRules(true); SFX.click(); });
+    $('btn-rules-close').addEventListener('click', function () { showRules(false); SFX.click(); });
 
     $('btn-copy').addEventListener('click', function () {
       var inp = $('share-link'); inp.select();

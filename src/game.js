@@ -76,11 +76,15 @@ function newGame(rng) {
     turn: 'red',           // whose move it is
     phase: 'setup',        // setup -> playing -> tiebreak -> over
     pending: null,         // tiebreak context {attackerId, defenderId, fromRow, fromCol, throws:{}}
-    winner: null,
+    winner: null,          // 'red' | 'blue' | null (null + phase 'over' === draw)
     lastBattle: null,      // {attacker, defender, winner, attackerKind, defenderKind}
-    moveCount: 0
+    moveCount: 0,
+    movesSinceCapture: 0   // plies since the last capture — drives the no-progress draw
   };
 }
+
+// Draw the game if this many plies pass with no capture (prevents endless shuffling).
+var DRAW_NO_CAPTURE = 60;
 
 function pieceAt(state, row, col) {
   for (var i = 0; i < state.pieces.length; i++) {
@@ -137,14 +141,17 @@ function flagAlive(state, team) {
 
 function other(team) { return team === 'red' ? 'blue' : 'red'; }
 
-// Check win conditions; mutates state.phase/winner if a side has won.
+// Check win conditions; mutates state.phase/winner if the game is decided.
+// winner === null with phase 'over' means a draw (mutual stalemate or no-progress).
 function checkWin(state) {
-  var teams = ['red', 'blue'];
-  for (var i = 0; i < teams.length; i++) {
-    var t = teams[i];
-    if (!flagAlive(state, t)) { state.phase = 'over'; state.winner = other(t); return; }
-    if (!teamHasMoves(state, t)) { state.phase = 'over'; state.winner = other(t); return; }
-  }
+  var redFlag = flagAlive(state, 'red'), blueFlag = flagAlive(state, 'blue');
+  if (!redFlag && !blueFlag) { state.phase = 'over'; state.winner = null; return; }
+  if (!redFlag) { state.phase = 'over'; state.winner = 'blue'; return; }
+  if (!blueFlag) { state.phase = 'over'; state.winner = 'red'; return; }
+  var redMoves = teamHasMoves(state, 'red'), blueMoves = teamHasMoves(state, 'blue');
+  if (!redMoves && !blueMoves) { state.phase = 'over'; state.winner = null; return; } // mutual stalemate -> draw
+  if (!redMoves) { state.phase = 'over'; state.winner = 'blue'; return; }
+  if (!blueMoves) { state.phase = 'over'; state.winner = 'red'; return; }
 }
 
 // Attempt a move. Returns {ok, error?, events:[]} where events describe what happened
@@ -168,6 +175,7 @@ function applyMove(state, team, fromRow, fromCol, toRow, toCol) {
   if (!match.attack) {
     // simple move
     piece.row = toRow; piece.col = toCol;
+    state.movesSinceCapture = (state.movesSinceCapture || 0) + 1;
     events.push({ type: 'move', id: piece.id, from: [fromRow, fromCol], to: [toRow, toCol] });
     endTurn(state, events);
     return { ok: true, events: events };
@@ -179,11 +187,12 @@ function applyMove(state, team, fromRow, fromCol, toRow, toCol) {
 }
 
 function resolveAttack(state, attacker, defender, fromRow, fromCol, events) {
-  attacker.revealed = true;
-  defender.revealed = true;
+  // NOTE: pieces are revealed to the opponent only once the battle RESOLVES — not on a
+  // tie (which enters a tiebreak and must keep both kinds hidden to preserve fog of war).
 
   // Flag capture
   if (defender.kind === FLAG) {
+    attacker.revealed = true; defender.revealed = true;
     defender.alive = false;
     attacker.row = defender.row; attacker.col = defender.col;
     state.lastBattle = { attacker: attacker.id, defender: defender.id, winner: attacker.id,
@@ -197,7 +206,9 @@ function resolveAttack(state, attacker, defender, fromRow, fromCol, events) {
 
   // Trap: destroys the attacker, trap remains (now revealed)
   if (defender.kind === TRAP) {
+    attacker.revealed = true; defender.revealed = true;
     attacker.alive = false;
+    state.movesSinceCapture = 0;
     state.lastBattle = { attacker: attacker.id, defender: defender.id, winner: defender.id,
       attackerKind: attacker.kind, defenderKind: TRAP };
     events.push({ type: 'battle', attacker: attacker.id, defender: defender.id,
@@ -230,6 +241,8 @@ function resolveAttack(state, attacker, defender, fromRow, fromCol, events) {
 }
 
 function applyBattleResult(state, attacker, defender, winner, loser, fromRow, fromCol, events) {
+  attacker.revealed = true; defender.revealed = true;
+  state.movesSinceCapture = 0;
   loser.alive = false;
   if (winner === attacker) {
     attacker.row = defender.row; attacker.col = defender.col;
@@ -271,8 +284,8 @@ function applyTiebreak(state, team, choice) {
   var fromRow = state.pending.fromRow, fromCol = state.pending.fromCol;
   var winner = result === 'a' ? attacker : defender;
   var loser = result === 'a' ? defender : attacker;
-  // reflect winning throws as the revealed kind for display
-  attacker.kind = aChoice; defender.kind = dChoice;
+  // The live throws decide ONLY who wins this tie. Pieces keep their true hidden kinds —
+  // overwriting them would corrupt every future battle for the surviving piece.
   state.pending = null;
   applyBattleResult(state, attacker, defender, winner, loser, fromRow, fromCol, events);
   return { ok: true, events: events };
@@ -292,7 +305,13 @@ function endTurn(state, events) {
   if (state.phase === 'over') return;
   checkWin(state);
   if (state.phase === 'over') {
-    events.push({ type: 'win', winner: state.winner, reason: 'no-moves' });
+    events.push({ type: 'win', winner: state.winner,
+      reason: state.winner == null ? 'draw' : 'no-moves' });
+    return;
+  }
+  if ((state.movesSinceCapture || 0) >= DRAW_NO_CAPTURE) {
+    state.phase = 'over'; state.winner = null;
+    events.push({ type: 'win', winner: null, reason: 'draw' });
     return;
   }
   state.turn = other(state.turn);
@@ -314,11 +333,12 @@ function swapSetup(state, team, r1, c1, r2, c2) {
 
 // Re-randomise a team's piece kinds in place (keeps positions) — used by "shuffle" in setup.
 function reshuffleArmy(state, team, rng) {
+  if (state.phase !== 'setup') return; // never reshuffle a live game (would resurrect dead pieces)
   var bag = shuffle(buildBag(), rng);
   var idx = 0;
   for (var i = 0; i < state.pieces.length; i++) {
     var p = state.pieces[i];
-    if (p.team === team) { p.kind = bag[idx++]; p.revealed = false; p.alive = true; }
+    if (p.team === team) { p.kind = bag[idx++]; p.revealed = false; }
   }
 }
 

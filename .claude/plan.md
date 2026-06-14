@@ -1,6 +1,6 @@
 # RPS Online — Master Plan
 *Type: SaaS (realtime multiplayer game) | Started: 2026-06-14 | Target: 2026-06-14*
-*Progress: 1/12 tasks (8%)*
+*Progress: 12/12 tasks (100%) — deployed + QA'd. Live: https://rps-online-production-deb9.up.railway.app*
 
 A faithful web replica of the "Rock Paper Scissors" (RPS Online) ICQ-style strategy
 game: Stratego-with-RPS. Create a game, share a link with a friend, play head-to-head.

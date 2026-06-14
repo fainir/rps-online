@@ -145,6 +145,57 @@ function add(s, team, kind, row, col, id) {
   eq(s.turn, 'blue', 'turn flipped after resolved attack');
 })();
 
+// --- REGRESSION: tiebreak winner keeps its true kind (does not become its thrown hand) ---
+(function () {
+  var s = controlled();
+  var atk = add(s, 'red', 'rock', 4, 3);   // a real ROCK
+  var def = add(s, 'blue', 'rock', 3, 3);   // real ROCK -> tie
+  add(s, 'red', 'flag', 5, 0); add(s, 'blue', 'flag', 0, 0);
+  add(s, 'blue', 'paper', 0, 6); // blue keeps a mover so no auto-win
+  G.applyMove(s, 'red', 4, 3, 3, 3);
+  // red wins the throw-off by throwing paper vs blue's rock
+  G.applyTiebreak(s, 'red', 'paper');
+  G.applyTiebreak(s, 'blue', 'rock');
+  ok(atk.alive && atk.kind === 'rock', 'tiebreak winner keeps its real kind (rock, not paper)');
+  // and a subsequent battle resolves on the REAL kind: real rock must LOSE to paper
+  s.turn = 'red'; s.phase = 'playing';
+  var bluePaper = add(s, 'blue', 'paper', 2, 3);
+  G.applyMove(s, 'red', 3, 3, 2, 3); // rock attacks paper -> rock loses
+  ok(!atk.alive, 'post-tiebreak rock still loses to paper (identity not corrupted)');
+})();
+
+// --- REGRESSION: fog of war — pieces are NOT revealed during an unresolved tiebreak ---
+(function () {
+  var s = controlled();
+  add(s, 'red', 'scissors', 4, 3);
+  var def = add(s, 'blue', 'scissors', 3, 3);
+  add(s, 'red', 'flag', 5, 0); add(s, 'blue', 'flag', 0, 0); add(s, 'blue', 'rock', 0, 6);
+  G.applyMove(s, 'red', 4, 3, 3, 3); // tie -> tiebreak
+  eq(s.phase, 'tiebreak', 'in tiebreak');
+  var redView = G.viewFor(s, 'red');
+  var enemyShown = redView.pieces.filter(function (p) { return p.team === 'blue' && p.kind != null; });
+  eq(enemyShown.length, 0, 'enemy kinds stay hidden during tiebreak (no fog leak)');
+})();
+
+// --- REGRESSION: draw by no-progress (no captures for DRAW_NO_CAPTURE plies) ---
+(function () {
+  var s = controlled();
+  add(s, 'red', 'rock', 4, 3);
+  add(s, 'red', 'flag', 5, 0); add(s, 'blue', 'flag', 0, 0); add(s, 'blue', 'rock', 1, 6);
+  // shuffle two lone movers back and forth; no captures ever happen -> eventual draw
+  var drew = false;
+  for (var i = 0; i < 200 && !drew; i++) {
+    var mover = s.turn === 'red' ? G.pieceAt(s, /*red rock anywhere*/-9, -9) : null;
+    // find current team's rock and a legal empty target
+    var rock = s.pieces.filter(function (p) { return p.alive && p.team === s.turn && p.kind === 'rock'; })[0];
+    var lm = G.legalMoves(s, rock).filter(function (m) { return !m.attack; });
+    if (!lm.length) break;
+    var r = G.applyMove(s, s.turn, rock.row, rock.col, lm[0].row, lm[0].col);
+    if (s.phase === 'over' && s.winner == null) drew = true;
+  }
+  ok(drew, 'game ends in a draw after many captureless moves');
+})();
+
 // --- win by no movable pieces ---
 (function () {
   var s = controlled();
