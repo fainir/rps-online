@@ -177,6 +177,7 @@
     updateNames();
     updateSidebar();
     updateStatusBar();
+    updateCaptured();
 
     // clear legal highlights
     cells.forEach(function (c) { c.classList.remove('legal', 'attack'); });
@@ -295,6 +296,30 @@
         setStatus(view.winner == null ? "It's a draw" : 'Game over');
       }
     }
+  }
+
+  var CAP_ORDER = ['rock', 'paper', 'scissors', 'trap', 'flag'];
+  function capItems(lost) {
+    lost = lost || {};
+    var html = CAP_ORDER.filter(function (k) { return lost[k]; }).map(function (k) {
+      return '<span class="cap-item">' + KIND_EMOJI[k] + '<i>' + lost[k] + '</i></span>';
+    }).join('');
+    return html || '<span class="cap-none">none yet</span>';
+  }
+  function updateCaptured() {
+    var tray = $('captured-tray');
+    var cap = view.captured;
+    if (!cap || view.phase === 'setup') { tray.hidden = true; return; }
+    var opp = myTeam === 'red' ? 'blue' : 'red';
+    var total = Object.keys(cap.red || {}).length + Object.keys(cap.blue || {}).length;
+    if (!total) { tray.hidden = true; return; }
+    tray.hidden = false;
+    // Show what each side has LOST. "You lost" = your team's casualties.
+    tray.innerHTML =
+      '<div class="cap-group ' + myTeam + '"><span class="cap-head">You lost</span>' +
+        '<span class="cap-items">' + capItems(cap[myTeam]) + '</span></div>' +
+      '<div class="cap-group ' + opp + '"><span class="cap-head">Rival lost</span>' +
+        '<span class="cap-items">' + capItems(cap[opp]) + '</span></div>';
   }
 
   function updateSidebar() {

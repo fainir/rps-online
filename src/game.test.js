@@ -39,8 +39,8 @@ ok(blue.every(function (p) { return p.row <= 1; }), 'blue on top rows');
 // --- helper: build a controlled board ---
 function controlled() {
   var s = G.newGame();
-  // clear all to a known empty board, then drop specific pieces
-  s.pieces.forEach(function (p) { p.alive = false; });
+  // start from a truly empty board, then drop specific pieces
+  s.pieces = [];
   s.phase = 'playing';
   s.turn = 'red';
   return s;
@@ -205,6 +205,18 @@ function add(s, team, kind, row, col, id) {
   G.checkWin(s);
   eq(s.phase, 'over', 'game over when a side has no moves');
   eq(s.winner, 'red', 'red wins when blue cannot move');
+})();
+
+// --- captured tally tracks eliminated pieces by team/kind ---
+(function () {
+  var s = controlled();
+  var atk = add(s, 'red', 'rock', 4, 3);
+  add(s, 'blue', 'scissors', 3, 3);   // red rock will beat & remove this
+  add(s, 'red', 'flag', 5, 0); add(s, 'blue', 'flag', 0, 0); add(s, 'blue', 'rock', 0, 6);
+  G.applyMove(s, 'red', 4, 3, 3, 3);
+  var view = G.viewFor(s, 'red');
+  eq(view.captured.blue.scissors, 1, 'captured tally records the eliminated blue scissors');
+  eq(Object.keys(view.captured.red).length, 0, 'no red pieces captured yet');
 })();
 
 // --- fog of war view hides enemy kinds ---

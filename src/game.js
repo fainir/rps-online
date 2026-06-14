@@ -369,11 +369,21 @@ function viewFor(state, viewer) {
       bothIn: bothIn
     };
   }
+  // Captured/eliminated pieces, per team, by kind. Every dead piece was revealed when it
+  // died, so exposing these kinds leaks nothing — it just lets players track the armies.
+  var captured = { red: {}, blue: {} };
+  for (var j = 0; j < state.pieces.length; j++) {
+    var dp = state.pieces[j];
+    if (dp.alive) continue;
+    var bucket = captured[dp.team];
+    bucket[dp.kind] = (bucket[dp.kind] || 0) + 1;
+  }
   return {
     cols: state.cols, rows: state.rows,
     pieces: pieces,
     turn: state.turn, phase: state.phase, winner: state.winner,
     pending: pending, lastBattle: state.lastBattle, moveCount: state.moveCount,
+    captured: captured,
     you: viewer
   };
 }
