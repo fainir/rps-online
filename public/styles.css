@@ -138,21 +138,11 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
 .team-blue[aria-pressed="true"]{border-color:#fff;background:rgba(47,109,208,.30)}
 .team-card:hover{transform:translateY(-2px)}
 
-/* avatar tokens (original art) */
-.avatar{
-  width:48px;height:48px;border-radius:50% 50% 46% 46%;
-  position:relative;display:block;border:2px solid rgba(0,0,0,.25);
-  box-shadow:inset 0 -6px 0 rgba(0,0,0,.12);
-}
-.avatar-red{background:radial-gradient(circle at 38% 32%, #ff7a6e, var(--red) 70%)}
-.avatar-blue{background:radial-gradient(circle at 38% 32%, #79a8ee, var(--blue) 70%)}
-.avatar .a-face{position:absolute;inset:0}
-.avatar .a-face::before,.avatar .a-face::after{
-  content:"";position:absolute;top:38%;width:7px;height:9px;border-radius:50%;
-  background:#22324a;box-shadow:0 0 0 2px rgba(255,255,255,.5);
-}
-.avatar .a-face::before{left:28%}
-.avatar .a-face::after{right:28%}
+/* intro character avatars (original chibi art, populated from JS) */
+.avatar{width:56px;height:60px;position:relative;display:block}
+.avatar .chibi{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.avatar-red{--gi:#e8483b;--gi-d:#a51d14}
+.avatar-blue{--gi:#3a78da;--gi-d:#1a4691}
 
 .big-btn{
   font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff;
@@ -235,42 +225,50 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
   transition:left .26s cubic-bezier(.4,1.3,.5,1), top .26s cubic-bezier(.4,1.3,.5,1);
   z-index:2;
 }
-.piece-inner{
-  width:80%;height:80%;border-radius:50% 50% 45% 45%;
-  position:relative;border:2px solid rgba(0,0,0,.30);
-  box-shadow:inset 0 -5px 0 rgba(0,0,0,.14), 0 2px 3px rgba(0,0,0,.25);
-  display:grid;place-items:center;
+/* ---- chibi fighter characters (original SVG art) ---- */
+.piece.red{--gi:#e8483b;--gi-d:#a51d14;--gi-lt:#ff8a7e}
+.piece.blue{--gi:#3a78da;--gi-d:#1a4691;--gi-lt:#86b3f3}
+.chibi{
+  position:absolute;inset:0;width:100%;height:100%;overflow:visible;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.28));
 }
-.piece.red .piece-inner{background:radial-gradient(circle at 38% 30%, #ff8175, var(--red) 72%)}
-.piece.blue .piece-inner{background:radial-gradient(circle at 38% 30%, #79a8ee, var(--blue) 72%)}
-.piece .eyes{position:absolute;top:30%;left:0;right:0;height:20%}
-.piece .eyes::before,.piece .eyes::after{
-  content:"";position:absolute;top:0;width:18%;height:90%;border-radius:50%;
-  background:#22324a;box-shadow:0 0 0 1.5px rgba(255,255,255,.55);
+.chibi .bob{
+  transform-box:fill-box;transform-origin:50% 100%;
+  animation:bob 2.4s ease-in-out infinite;animation-delay:var(--bob-delay,0s);
 }
-.piece .eyes::before{left:26%}
-.piece .eyes::after{right:26%}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+.chibi .tail{
+  transform-box:fill-box;transform-origin:left center;
+  animation:sway 1.9s ease-in-out infinite;animation-delay:var(--bob-delay,0s);
+}
+@keyframes sway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(10deg)}}
+@media (prefers-reduced-motion: reduce){.chibi .bob,.chibi .tail{animation:none}}
+
 .piece .badge{
-  position:absolute;bottom:-3px;right:-3px;
-  width:54%;height:54%;border-radius:50%;
-  background:var(--paper);border:1.5px solid rgba(0,0,0,.3);
-  display:grid;place-items:center;font-size:11px;line-height:1;
-  box-shadow:0 1px 2px rgba(0,0,0,.3);
+  position:absolute;bottom:2%;right:-2%;
+  width:46%;height:46%;border-radius:50%;
+  background:var(--paper);border:1.5px solid rgba(0,0,0,.28);
+  display:grid;place-items:center;font-size:10.5px;line-height:1;
+  box-shadow:0 1px 2px rgba(0,0,0,.3);z-index:3;
 }
-.piece.blue.hidden .piece-inner::after,
-.piece.red.hidden .piece-inner::after{
-  content:"?";font-family:var(--font-display);font-weight:800;
-  color:rgba(255,255,255,.8);font-size:60%;
-}
+/* hidden enemy: no item shown (type stays secret) */
+
 .piece.mine{cursor:default}
 .piece.selectable{cursor:pointer}
-.piece.selectable:hover .piece-inner{box-shadow:inset 0 -5px 0 rgba(0,0,0,.14),0 0 0 2px #fff,0 2px 4px rgba(0,0,0,.3)}
-.piece.selected .piece-inner{box-shadow:inset 0 -5px 0 rgba(0,0,0,.14),0 0 0 3px #fff,0 0 12px rgba(255,255,255,.8)}
-.piece.swap-pick .piece-inner{box-shadow:inset 0 -5px 0 rgba(0,0,0,.14),0 0 0 3px #ffe46b,0 0 12px rgba(255,228,107,.9)}
-.piece.dead{animation:poof .4s ease forwards}
-@keyframes poof{to{transform:scale(.2) rotate(40deg);opacity:0}}
-.piece.flash .piece-inner{animation:flash .4s ease}
-@keyframes flash{0%,100%{filter:none}50%{filter:brightness(2)}}
+.piece.selectable:hover .chibi{transform:scale(1.1)}
+.piece.selected .chibi{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px #fff);animation:chosen .6s ease-in-out infinite alternate}
+@keyframes chosen{from{transform:translateY(0) scale(1.04)}to{transform:translateY(-3px) scale(1.1)}}
+.piece.swap-pick .chibi{filter:drop-shadow(0 0 4px #ffe46b) drop-shadow(0 0 8px #ffe46b)}
+.piece.spawn .chibi{animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
+@keyframes pop{0%{transform:scale(0) translateY(8px)}100%{transform:scale(1) translateY(0)}}
+.piece.hop .chibi{animation:hopper .3s ease}
+@keyframes hopper{0%{transform:translateY(0) scaleY(1)}30%{transform:translateY(-7px) scaleY(1.08)}65%{transform:translateY(0) scaleY(.92)}100%{transform:translateY(0) scaleY(1)}}
+.piece.clash .chibi{animation:clash .42s ease}
+@keyframes clash{0%,100%{transform:none}20%{transform:translateX(-3px) rotate(-7deg)}45%{transform:translateX(4px) rotate(8deg) scale(1.08)}70%{transform:translateX(-2px) rotate(-3deg)}}
+.piece.dead{animation:poof .45s ease forwards;z-index:4}
+@keyframes poof{40%{transform:scale(1.15) rotate(-8deg)}100%{transform:scale(.1) rotate(50deg);opacity:0}}
+.piece.flash .chibi{animation:flash .42s ease}
+@keyframes flash{0%,100%{filter:drop-shadow(0 2px 2px rgba(0,0,0,.28))}50%{filter:brightness(2.2) drop-shadow(0 0 6px #fff)}}
 
 /* overlays */
 .overlay{

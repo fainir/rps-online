@@ -10,6 +10,37 @@
   var KIND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️', flag: '🚩', trap: '💣' };
   var HAND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
 
+  // Original chibi-fighter character (my own SVG art). Team colours come from CSS vars
+  // (--gi / --gi-d) so one markup string serves both armies.
+  var CHIBI_SVG =
+    '<svg class="chibi" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<ellipse cx="50" cy="104" rx="23" ry="5" fill="rgba(0,0,0,.18)"/>' +
+      '<g class="bob">' +
+        '<rect x="40" y="80" width="8" height="18" rx="4" fill="#5a4630"/>' +
+        '<rect x="52" y="80" width="8" height="18" rx="4" fill="#5a4630"/>' +
+        '<path d="M25 62 Q50 51 75 62 L72 86 Q50 94 28 86 Z" fill="var(--gi)" stroke="rgba(0,0,0,.22)" stroke-width="2"/>' +
+        '<path d="M50 53 L50 92" stroke="rgba(0,0,0,.16)" stroke-width="2"/>' +
+        '<path d="M40 56 L50 62 L60 56" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="2" stroke-linejoin="round"/>' +
+        '<circle cx="23" cy="66" r="8.5" fill="#f6c79a" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>' +
+        '<circle cx="77" cy="66" r="8.5" fill="#f6c79a" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>' +
+        '<circle cx="50" cy="38" r="28" fill="#fbd3a6" stroke="rgba(0,0,0,.18)" stroke-width="2"/>' +
+        '<path class="tail" d="M73 28 q17 1 22 13 q-15 1 -24 -6 Z" fill="var(--gi-d)"/>' +
+        '<path d="M21 29 Q50 16 79 29 L79 40 Q50 30 21 40 Z" fill="var(--gi-d)"/>' +
+        '<rect x="46" y="31" width="8" height="6" rx="2" fill="var(--gi-d)"/>' +
+        '<path d="M31 33 L46 39" stroke="#6b4423" stroke-width="3.6" stroke-linecap="round"/>' +
+        '<path d="M69 33 L54 39" stroke="#6b4423" stroke-width="3.6" stroke-linecap="round"/>' +
+        '<ellipse cx="40" cy="48" rx="6.2" ry="7.2" fill="#fff"/>' +
+        '<ellipse cx="60" cy="48" rx="6.2" ry="7.2" fill="#fff"/>' +
+        '<circle cx="41.5" cy="49" r="3.1" fill="#243245"/>' +
+        '<circle cx="58.5" cy="49" r="3.1" fill="#243245"/>' +
+        '<circle cx="42.6" cy="47.8" r="1" fill="#fff"/>' +
+        '<circle cx="59.6" cy="47.8" r="1" fill="#fff"/>' +
+        '<path d="M45 59 q5 4 10 0" stroke="#7a4a28" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="32" cy="55" rx="4" ry="2.6" fill="#ff9a8a" opacity=".55"/>' +
+        '<ellipse cx="68" cy="55" rx="4" ry="2.6" fill="#ff9a8a" opacity=".55"/>' +
+      '</g>' +
+    '</svg>';
+
   // ---- client state ----
   var ws = null, socketReady = false, sendQueue = [];
   var myTeam = null, myName = 'Player', pickedTeam = 'red', roomCode = null;
@@ -22,6 +53,7 @@
   var myToken = null;         // per-seat reconnect token from the server
   var holdTiebreak = false;   // keep the tiebreak modal up briefly to reveal the deciding throw
   var tbHoldTimer = null;
+  var fxQueue = [];           // per-piece animations applied AFTER render (hop/clash)
 
   // ---- WebSocket ----
   function wsUrl() {
@@ -105,8 +137,22 @@
     roomCode = msg.code;
 
     showScreen('board');
+    fxQueue = [];
     processEvents(msg.events || [], prev);
     render();
+    applyFx();
+  }
+
+  // Apply queued per-piece animations after the DOM has been reconciled, so render()'s
+  // className rebuild doesn't wipe them mid-animation.
+  function applyFx() {
+    fxQueue.forEach(function (fx) {
+      var pe = pieceEls[fx.id]; if (!pe) return;
+      pe.classList.add(fx.cls);
+      var dur = fx.cls === 'hop' ? 320 : 460;
+      setTimeout(function () { if (pe) pe.classList.remove(fx.cls); }, dur);
+    });
+    fxQueue = [];
   }
 
   function processEvents(events, prev) {
@@ -120,8 +166,12 @@
           if (e.team !== myTeam) { SFX.join(); flashStatus('Opponent joined!'); }
           break;
         case 'start': SFX.message(); break;
-        case 'move': SFX.move(); break;
-        case 'battle': onBattle(e); break;
+        case 'move': SFX.move(); if (e.id) fxQueue.push({ id: e.id, cls: 'hop' }); break;
+        case 'battle':
+          onBattle(e);
+          fxQueue.push({ id: e.attacker, cls: 'clash' });
+          fxQueue.push({ id: e.defender, cls: 'clash' });
+          break;
         case 'tiebreak-start': SFX.tie(); resetTiebreakHands(true); flashStatus('TIE! Throw to break it'); break;
         case 'tiebreak-throw': onTiebreakThrow(e); break;
         case 'tiebreak-again': setTimeout(function () { resetTiebreakHands(true); }, 800); break;
@@ -187,9 +237,13 @@
     view.pieces.forEach(function (p) {
       present[p.id] = true;
       var pe = pieceEls[p.id];
+      var isNew = !pe;
       if (!pe) {
         pe = el('div', 'piece');
-        pe.innerHTML = '<div class="piece-inner"><span class="eyes"></span><span class="badge"></span></div>';
+        pe.innerHTML = CHIBI_SVG + '<span class="badge"></span>';
+        // stagger the idle bob so the army isn't in lockstep
+        var seed = (p.id.charCodeAt(0) + p.id.charCodeAt(p.id.length - 1)) % 12;
+        pe.style.setProperty('--bob-delay', (-seed * 0.2).toFixed(2) + 's');
         pe.addEventListener('click', onPieceClick);
         boardEl.appendChild(pe);
         pieceEls[p.id] = pe;
@@ -200,7 +254,7 @@
       pe.style.top = (disp(p.row) * 100 / 6) + '%';
       pe.style.width = (100 / 7) + '%';
       pe.style.height = (100 / 6) + '%';
-      pe.className = 'piece ' + p.team + (p.mine ? ' mine' : '') + (p.kind ? '' : ' hidden');
+      pe.className = 'piece ' + p.team + (p.mine ? ' mine' : '') + (p.kind ? '' : ' hidden') + (isNew ? ' spawn' : '');
       var badge = pe.querySelector('.badge');
       if (p.kind) { badge.textContent = KIND_EMOJI[p.kind] || ''; badge.style.display = 'grid'; }
       else { badge.textContent = ''; badge.style.display = 'none'; }
@@ -416,9 +470,7 @@
     res.classList.add(winTeam === 'red' ? 'bd-win-red' : 'bd-win-blue');
     res.textContent = (names[winTeam] || (winTeam === 'red' ? 'Red' : 'Blue')) + ' wins';
     bd.appendChild(res);
-    // flash the attacker piece
-    var pe = pieceEls[e.attacker] || pieceEls[e.defender];
-    if (pe) { pe.classList.add('flash'); setTimeout(function () { pe.classList.remove('flash'); }, 400); }
+    // the combatants' clash animation is queued via fxQueue (applied after render)
   }
 
   function onWin(e) {
@@ -524,6 +576,11 @@
 
   // ---- wire up UI ----
   function initUI() {
+    // show the actual game characters in the team picker
+    var ar = document.querySelector('.avatar-red'), ab = document.querySelector('.avatar-blue');
+    if (ar) ar.innerHTML = CHIBI_SVG;
+    if (ab) ab.innerHTML = CHIBI_SVG;
+
     // team pick
     $('pick-red').addEventListener('click', function () { setPick('red'); });
     $('pick-blue').addEventListener('click', function () { setPick('blue'); });
