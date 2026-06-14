@@ -36,6 +36,7 @@ function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   await until(function () { return A.view && A.view.phase === 'playing'; });
   A.send({ type: 'resign' });
   await until(function () { return A.view.phase === 'over'; });
+  await until(function () { return B.view && B.view.phase === 'over'; }); // wait for B's broadcast too
   assert(A.view.winner === 'blue', 'resign hands the win to the opponent');
   assert(B.view.winner === 'blue', 'both clients agree on the resign result');
   A.ws.close(); B.ws.close();
