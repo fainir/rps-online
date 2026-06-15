@@ -646,8 +646,12 @@
     $('battle-display').innerHTML = '<div class="bd-empty">Battles appear here</div>';
     var hint = $('intro-hint'); hint.classList.remove('err');
     hint.textContent = 'Create a game, then share the link with a friend.';
+    // restore the default (create-first) intro layout
+    document.querySelector('.intro-grid').classList.remove('invited');
     $('btn-create').textContent = 'Create Game ▶';
+    $('btn-join').textContent = 'Join';
     $('code-input').value = '';
+    try { history.replaceState({}, '', location.pathname); } catch (e) {}
     showScreen('intro');
   }
 
@@ -739,13 +743,16 @@
       if (e.target === $('board') && selected) { selected = null; render(); }
     });
 
-    // auto-join from URL
+    // auto-join from URL — flip the intro to a "join" layout where JOIN is the primary
+    // action (the team + advanced controls belong to the creator, so hide them).
     var params = new URLSearchParams(location.search);
     var room = params.get('room');
     if (room) {
+      document.querySelector('.intro-grid').classList.add('invited');
       $('code-input').value = room.toUpperCase();
-      $('btn-create').textContent = 'Create New ▶';
-      $('intro-hint').textContent = "You're invited! Enter your name and tap Join.";
+      $('btn-join').textContent = 'Join Game ▶';
+      $('btn-create').textContent = 'or create a new game instead';
+      $('intro-hint').textContent = "You're invited! Enter your name to join.";
       $('name-input').focus();
     }
   }

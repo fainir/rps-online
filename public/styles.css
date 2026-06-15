@@ -169,6 +169,30 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
 .hint{font-size:12.5px;color:#3c4f0d;text-align:center;margin:0;font-weight:700;opacity:.9}
 .hint.err{color:#7a160c}
 
+/* ----- invited (joining via link): JOIN is the primary action ----- */
+.intro-grid.invited .choose-label,
+.intro-grid.invited .team-pick,
+.intro-grid.invited .adv-toggle{display:none}
+.intro-grid.invited .join-row{flex-direction:column;gap:10px;order:1}
+.intro-grid.invited #intro-hint{order:2}
+.intro-grid.invited #btn-create{order:3}
+/* promote Join to a big primary button */
+.intro-grid.invited #btn-join{
+  width:100%;font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff;
+  background:linear-gradient(#7fb22a,#5c8a16);border:2px solid #3f6209;border-radius:10px;
+  padding:11px 14px;cursor:pointer;
+  box-shadow:0 4px 0 #3f6209, inset 0 1px 0 rgba(255,255,255,.35);
+}
+.intro-grid.invited #btn-join:hover{filter:brightness(1.05)}
+.intro-grid.invited #btn-join:active{transform:translateY(3px);box-shadow:0 1px 0 #3f6209}
+/* demote Create to a quiet text link */
+.intro-grid.invited #btn-create{
+  background:none;border:none;box-shadow:none;color:#3c4f0d;opacity:.8;
+  font-family:var(--font-body);font-weight:700;font-size:13px;
+  text-decoration:underline;padding:4px;
+}
+.intro-grid.invited #btn-create:active{transform:none}
+
 /* ---------- Board screen ---------- */
 #screen-board{padding:6px 8px;align-items:center;gap:4px}
 .name-tag{
