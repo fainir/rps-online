@@ -225,28 +225,34 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
   transition:left .26s cubic-bezier(.4,1.3,.5,1), top .26s cubic-bezier(.4,1.3,.5,1);
   z-index:2;
 }
-/* ---- chibi fighter characters (original SVG art) ---- */
+/* ---- chibi warrior characters (original rigged SVG art) ---- */
 .piece.red{--gi:#e8483b;--gi-d:#a51d14;--gi-lt:#ff8a7e}
 .piece.blue{--gi:#3a78da;--gi-d:#1a4691;--gi-lt:#86b3f3}
 .chibi{
   position:absolute;inset:0;width:100%;height:100%;overflow:visible;
   filter:drop-shadow(0 2px 2px rgba(0,0,0,.28));
 }
-.chibi .bob{
-  transform-box:fill-box;transform-origin:50% 100%;
-  animation:bob 2.4s ease-in-out infinite;animation-delay:var(--bob-delay,0s);
-}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
-.chibi .tail{
-  transform-box:fill-box;transform-origin:left center;
-  animation:sway 1.9s ease-in-out infinite;animation-delay:var(--bob-delay,0s);
-}
-@keyframes sway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(10deg)}}
-@media (prefers-reduced-motion: reduce){.chibi .bob,.chibi .tail{animation:none}}
+.chibi g{transform-box:fill-box}
+
+/* idle life: breathing torso, bobbing head, blinking eyes, bouncing topknot, swaying band */
+.chibi .torso{transform-origin:50% 100%;animation:breathe 2.6s ease-in-out infinite;animation-delay:var(--bob-delay,0s)}
+@keyframes breathe{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(.6px) scaleY(.97)}}
+.chibi .head{transform-origin:50% 90%;animation:headbob 2.6s ease-in-out infinite;animation-delay:var(--bob-delay,0s)}
+@keyframes headbob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-1.5deg)}}
+.chibi .topknot{transform-origin:50% 100%;animation:knot 1.5s ease-in-out infinite;animation-delay:var(--bob-delay,0s)}
+@keyframes knot{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(8deg)}}
+.chibi .tail{transform-origin:left center;animation:sway 1.8s ease-in-out infinite;animation-delay:var(--bob-delay,0s)}
+@keyframes sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(11deg)}}
+.chibi .eye{transform-origin:center;animation:blink 4.2s ease-in-out infinite;animation-delay:var(--blink-delay,1s)}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.chibi .arm{transform-origin:50% 0}
+
+/* default mouth = neutral */
+.chibi .mouth-happy,.chibi .mouth-sad{display:none}
 
 .piece .badge{
-  position:absolute;bottom:2%;right:-2%;
-  width:46%;height:46%;border-radius:50%;
+  position:absolute;bottom:0;right:-3%;
+  width:44%;height:44%;border-radius:50%;
   background:var(--paper);border:1.5px solid rgba(0,0,0,.28);
   display:grid;place-items:center;font-size:10.5px;line-height:1;
   box-shadow:0 1px 2px rgba(0,0,0,.3);z-index:3;
@@ -255,20 +261,54 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
 
 .piece.mine{cursor:default}
 .piece.selectable{cursor:pointer}
-.piece.selectable:hover .chibi{transform:scale(1.1)}
-.piece.selected .chibi{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px #fff);animation:chosen .6s ease-in-out infinite alternate}
-@keyframes chosen{from{transform:translateY(0) scale(1.04)}to{transform:translateY(-3px) scale(1.1)}}
-.piece.swap-pick .chibi{filter:drop-shadow(0 0 4px #ffe46b) drop-shadow(0 0 8px #ffe46b)}
-.piece.spawn .chibi{animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
-@keyframes pop{0%{transform:scale(0) translateY(8px)}100%{transform:scale(1) translateY(0)}}
-.piece.hop .chibi{animation:hopper .3s ease}
-@keyframes hopper{0%{transform:translateY(0) scaleY(1)}30%{transform:translateY(-7px) scaleY(1.08)}65%{transform:translateY(0) scaleY(.92)}100%{transform:translateY(0) scaleY(1)}}
-.piece.clash .chibi{animation:clash .42s ease}
-@keyframes clash{0%,100%{transform:none}20%{transform:translateX(-3px) rotate(-7deg)}45%{transform:translateX(4px) rotate(8deg) scale(1.08)}70%{transform:translateX(-2px) rotate(-3deg)}}
-.piece.dead{animation:poof .45s ease forwards;z-index:4}
-@keyframes poof{40%{transform:scale(1.15) rotate(-8deg)}100%{transform:scale(.1) rotate(50deg);opacity:0}}
-.piece.flash .chibi{animation:flash .42s ease}
-@keyframes flash{0%,100%{filter:drop-shadow(0 2px 2px rgba(0,0,0,.28))}50%{filter:brightness(2.2) drop-shadow(0 0 6px #fff)}}
+.piece.selectable:hover .chibi{transform:scale(1.08)}
+.piece.selected .chibi{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 7px #fff);animation:chosen .5s ease-in-out infinite alternate}
+@keyframes chosen{from{transform:translateY(0) scale(1.05)}to{transform:translateY(-4px) scale(1.12)}}
+.piece.swap-pick .chibi{filter:drop-shadow(0 0 4px #ffe46b) drop-shadow(0 0 9px #ffe46b)}
+
+.piece.spawn .chibi{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(0) translateY(10px)}60%{transform:scale(1.12) translateY(-2px)}100%{transform:scale(1) translateY(0)}}
+
+/* walk cycle when a piece moves: legs stride, whole body bounces twice */
+.piece.hop .chibi{animation:stride .42s ease-in-out}
+@keyframes stride{0%,100%{transform:translateY(0)}25%,75%{transform:translateY(-6px)}50%{transform:translateY(0)}}
+.piece.hop .leg-l{transform-origin:50% 0;animation:stepA .21s ease-in-out 2}
+.piece.hop .leg-r{transform-origin:50% 0;animation:stepB .21s ease-in-out 2}
+@keyframes stepA{0%,100%{transform:rotate(0)}50%{transform:rotate(22deg)}}
+@keyframes stepB{0%,100%{transform:rotate(0)}50%{transform:rotate(-22deg)}}
+.piece.hop .arm-l{animation:stepB .21s ease-in-out 2}
+.piece.hop .arm-r{animation:stepA .21s ease-in-out 2}
+
+/* attack clash: lunge forward + arm swing */
+.piece.clash{z-index:5}
+.piece.clash .chibi{animation:clash .5s ease}
+@keyframes clash{0%,100%{transform:none}18%{transform:translateY(2px) scale(.9)}40%{transform:translateY(-3px) translateX(5px) rotate(9deg) scale(1.14)}62%{transform:translateX(-3px) rotate(-5deg)}}
+.piece.clash .arm-r{animation:punch .5s ease}
+@keyframes punch{0%,100%{transform:rotate(0)}40%{transform:rotate(-70deg) translateY(-4px)}70%{transform:rotate(-30deg)}}
+
+/* victory / defeat poses at game over */
+.piece.win-pose .chibi{animation:cheer .8s ease-in-out infinite}
+@keyframes cheer{0%,100%{transform:translateY(0)}40%{transform:translateY(-9px) scale(1.04)}}
+.piece.win-pose .arm-l{transform:rotate(-150deg) translateY(-2px)}
+.piece.win-pose .arm-r{transform:rotate(150deg) translateY(-2px)}
+.piece.win-pose .mouth-neutral,.piece.win-pose .mouth-sad{display:none}
+.piece.win-pose .mouth-happy{display:block}
+.piece.lose-pose .chibi{transform:translateY(4px) scaleY(.9);filter:drop-shadow(0 2px 2px rgba(0,0,0,.28)) grayscale(.3)}
+.piece.lose-pose .head{animation:weep 1.4s ease-in-out infinite}
+@keyframes weep{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+.piece.lose-pose .mouth-neutral,.piece.lose-pose .mouth-happy{display:none}
+.piece.lose-pose .mouth-sad{display:block}
+.piece.lose-pose .brow-l{transform:translateY(-2px) rotate(18deg)}
+.piece.lose-pose .brow-r{transform:translateY(-2px) rotate(-18deg)}
+
+.piece.dead{animation:poof .5s ease forwards;z-index:4}
+@keyframes poof{30%{transform:translateY(-6px) scale(1.15) rotate(-10deg)}100%{transform:translateY(14px) scale(.1) rotate(60deg);opacity:0}}
+
+@media (prefers-reduced-motion: reduce){
+  .chibi .torso,.chibi .head,.chibi .topknot,.chibi .tail,.chibi .eye{animation:none}
+  .piece.hop .chibi,.piece.hop .leg-l,.piece.hop .leg-r,.piece.hop .arm-l,.piece.hop .arm-r,
+  .piece.clash .chibi,.piece.clash .arm-r,.piece.win-pose .chibi,.piece.lose-pose .head,.piece.selected .chibi{animation:none}
+}
 
 /* overlays */
 .overlay{

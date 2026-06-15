@@ -10,34 +10,39 @@
   var KIND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️', flag: '🚩', trap: '💣' };
   var HAND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
 
-  // Original chibi-fighter character (my own SVG art). Team colours come from CSS vars
-  // (--gi / --gi-d) so one markup string serves both armies.
+  // Original chibi-warrior character (my own SVG art), fully rigged for animation:
+  // separate legs (walk cycle), torso (breathe), arms (swing), head + topknot (bob),
+  // eyes (blink) and three mouths (neutral / happy / sad) toggled for win/lose poses.
+  // Team colours come from CSS vars (--gi / --gi-d) so one markup serves both armies.
   var CHIBI_SVG =
-    '<svg class="chibi" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-      '<ellipse cx="50" cy="104" rx="23" ry="5" fill="rgba(0,0,0,.18)"/>' +
-      '<g class="bob">' +
-        '<rect x="40" y="80" width="8" height="18" rx="4" fill="#5a4630"/>' +
-        '<rect x="52" y="80" width="8" height="18" rx="4" fill="#5a4630"/>' +
-        '<path d="M25 62 Q50 51 75 62 L72 86 Q50 94 28 86 Z" fill="var(--gi)" stroke="rgba(0,0,0,.22)" stroke-width="2"/>' +
-        '<path d="M50 53 L50 92" stroke="rgba(0,0,0,.16)" stroke-width="2"/>' +
-        '<path d="M40 56 L50 62 L60 56" fill="none" stroke="rgba(0,0,0,.16)" stroke-width="2" stroke-linejoin="round"/>' +
-        '<circle cx="23" cy="66" r="8.5" fill="#f6c79a" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>' +
-        '<circle cx="77" cy="66" r="8.5" fill="#f6c79a" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/>' +
-        '<circle cx="50" cy="38" r="28" fill="#fbd3a6" stroke="rgba(0,0,0,.18)" stroke-width="2"/>' +
-        '<path class="tail" d="M73 28 q17 1 22 13 q-15 1 -24 -6 Z" fill="var(--gi-d)"/>' +
-        '<path d="M21 29 Q50 16 79 29 L79 40 Q50 30 21 40 Z" fill="var(--gi-d)"/>' +
-        '<rect x="46" y="31" width="8" height="6" rx="2" fill="var(--gi-d)"/>' +
-        '<path d="M31 33 L46 39" stroke="#6b4423" stroke-width="3.6" stroke-linecap="round"/>' +
-        '<path d="M69 33 L54 39" stroke="#6b4423" stroke-width="3.6" stroke-linecap="round"/>' +
-        '<ellipse cx="40" cy="48" rx="6.2" ry="7.2" fill="#fff"/>' +
-        '<ellipse cx="60" cy="48" rx="6.2" ry="7.2" fill="#fff"/>' +
-        '<circle cx="41.5" cy="49" r="3.1" fill="#243245"/>' +
-        '<circle cx="58.5" cy="49" r="3.1" fill="#243245"/>' +
-        '<circle cx="42.6" cy="47.8" r="1" fill="#fff"/>' +
-        '<circle cx="59.6" cy="47.8" r="1" fill="#fff"/>' +
-        '<path d="M45 59 q5 4 10 0" stroke="#7a4a28" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
-        '<ellipse cx="32" cy="55" rx="4" ry="2.6" fill="#ff9a8a" opacity=".55"/>' +
-        '<ellipse cx="68" cy="55" rx="4" ry="2.6" fill="#ff9a8a" opacity=".55"/>' +
+    '<svg class="chibi" viewBox="0 0 100 124" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<ellipse class="shadow" cx="50" cy="116" rx="26" ry="6" fill="rgba(0,0,0,.18)"/>' +
+      '<g class="leg leg-l"><rect x="37" y="88" width="9" height="20" rx="4.5" fill="var(--gi-d)"/><ellipse cx="41" cy="109" rx="7.5" ry="4" fill="#2f2118"/></g>' +
+      '<g class="leg leg-r"><rect x="54" y="88" width="9" height="20" rx="4.5" fill="var(--gi-d)"/><ellipse cx="58" cy="109" rx="7.5" ry="4" fill="#2f2118"/></g>' +
+      '<g class="torso">' +
+        '<g class="arm arm-l"><rect x="19" y="66" width="11" height="17" rx="5.5" fill="var(--gi)" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/><circle cx="24.5" cy="85" r="6.5" fill="#fbd3a6" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/></g>' +
+        '<path d="M26 64 Q50 53 74 64 L71 93 Q50 101 29 93 Z" fill="var(--gi)" stroke="rgba(0,0,0,.22)" stroke-width="2"/>' +
+        '<path d="M39 60 L50 70 L61 60" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="2.6" stroke-linejoin="round"/>' +
+        '<path d="M50 70 L50 97" stroke="rgba(0,0,0,.14)" stroke-width="2"/>' +
+        '<rect x="28" y="81" width="44" height="7.5" rx="3" fill="var(--gi-d)"/>' +
+        '<rect x="45.5" y="81" width="9" height="12" rx="2.5" fill="var(--gi-d)"/>' +
+        '<g class="arm arm-r"><rect x="70" y="66" width="11" height="17" rx="5.5" fill="var(--gi)" stroke="rgba(0,0,0,.2)" stroke-width="1.5"/><circle cx="75.5" cy="85" r="6.5" fill="#fbd3a6" stroke="rgba(0,0,0,.2)" stroke-width="1.3"/></g>' +
+      '</g>' +
+      '<g class="head">' +
+        '<g class="topknot"><path d="M45 13 Q50 -1 55 13 Q52.5 17 50 17 Q47.5 17 45 13 Z" fill="var(--gi-d)"/><circle cx="50" cy="14" r="5.5" fill="var(--gi-d)"/></g>' +
+        '<circle cx="50" cy="46" r="30" fill="#fbd3a6" stroke="rgba(0,0,0,.18)" stroke-width="2"/>' +
+        '<path d="M21 41 Q29 20 50 19 Q71 20 79 41 Q70 31 50 31 Q30 31 21 41 Z" fill="var(--gi-d)"/>' +
+        '<path class="band" d="M21 41 Q50 31 79 41 L79 49 Q50 39 21 49 Z" fill="var(--gi-d)"/>' +
+        '<path class="tail" d="M74 45 q16 1 20 13 q-14 1 -23 -6 Z" fill="var(--gi-d)"/>' +
+        '<path class="brow brow-l" d="M32 42 L46 46" stroke="#6b4423" stroke-width="3.8" stroke-linecap="round"/>' +
+        '<path class="brow brow-r" d="M68 42 L54 46" stroke="#6b4423" stroke-width="3.8" stroke-linecap="round"/>' +
+        '<g class="eye eye-l"><ellipse cx="41" cy="53" rx="6.2" ry="7.4" fill="#fff"/><circle cx="42.6" cy="54" r="3.1" fill="#243245"/><circle cx="43.7" cy="52.6" r="1.1" fill="#fff"/></g>' +
+        '<g class="eye eye-r"><ellipse cx="59" cy="53" rx="6.2" ry="7.4" fill="#fff"/><circle cx="57.4" cy="54" r="3.1" fill="#243245"/><circle cx="58.5" cy="52.6" r="1.1" fill="#fff"/></g>' +
+        '<ellipse cx="30" cy="61" rx="5.2" ry="3.3" fill="#ff8e7d" opacity=".6"/>' +
+        '<ellipse cx="70" cy="61" rx="5.2" ry="3.3" fill="#ff8e7d" opacity=".6"/>' +
+        '<path class="mouth mouth-neutral" d="M44 65 q6 4.5 12 0" stroke="#7a4a28" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+        '<path class="mouth mouth-happy" d="M42 63 q8 11 16 0 q-8 4 -16 0 Z" fill="#7a3326" stroke="#7a3326" stroke-width="1"/>' +
+        '<path class="mouth mouth-sad" d="M43 69 q7 -7 14 0" stroke="#7a4a28" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
       '</g>' +
     '</svg>';
 
@@ -262,9 +267,10 @@
       if (!pe) {
         pe = el('div', 'piece');
         pe.innerHTML = CHIBI_SVG + '<span class="badge"></span>';
-        // stagger the idle bob so the army isn't in lockstep
+        // stagger idle breathing + blinks so the army isn't in lockstep
         var seed = (p.id.charCodeAt(0) + p.id.charCodeAt(p.id.length - 1)) % 12;
-        pe.style.setProperty('--bob-delay', (-seed * 0.2).toFixed(2) + 's');
+        pe.style.setProperty('--bob-delay', (-seed * 0.22).toFixed(2) + 's');
+        pe.style.setProperty('--blink-delay', (-(seed * 0.41)).toFixed(2) + 's');
         pe.addEventListener('click', onPieceClick);
         boardEl.appendChild(pe);
         pieceEls[p.id] = pe;
@@ -275,7 +281,9 @@
       pe.style.top = (disp(p.row) * 100 / 6) + '%';
       pe.style.width = (100 / 7) + '%';
       pe.style.height = (100 / 6) + '%';
-      pe.className = 'piece ' + p.team + (p.mine ? ' mine' : '') + (p.kind ? '' : ' hidden') + (isNew ? ' spawn' : '');
+      var pose = '';
+      if (view.phase === 'over' && view.winner) pose = (p.team === view.winner) ? ' win-pose' : ' lose-pose';
+      pe.className = 'piece ' + p.team + (p.mine ? ' mine' : '') + (p.kind ? '' : ' hidden') + (isNew ? ' spawn' : '') + pose;
       var badge = pe.querySelector('.badge');
       if (p.kind) { badge.textContent = KIND_EMOJI[p.kind] || ''; badge.style.display = 'grid'; }
       else { badge.textContent = ''; badge.style.display = 'none'; }
