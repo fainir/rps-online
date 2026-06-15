@@ -60,6 +60,7 @@
   var tbHoldTimer = null;
   var fxQueue = [];           // per-piece animations applied AFTER render (hop/clash)
   var rejoining = false;      // true while silently reconnecting to a saved game
+  var gameAdvanced = false;   // advanced mode = manual arrange + ready (vs instant start)
 
   // ---- WebSocket ----
   function wsUrl() {
@@ -158,6 +159,7 @@
   function applyState(msg) {
     myTeam = msg.you;
     names = msg.names; readyState = msg.ready; connected = msg.connected;
+    gameAdvanced = !!msg.advanced;
     var prev = view;
     view = msg.view;
     roomCode = msg.code;
@@ -309,7 +311,7 @@
     view.pieces.forEach(function (p) {
       var pe = pieceEls[p.id]; if (!pe) return;
       pe.classList.remove('selectable', 'selected', 'swap-pick');
-      if (view.phase === 'setup' && p.mine) {
+      if (gameAdvanced && view.phase === 'setup' && p.mine) {
         pe.classList.add('selectable');
         if (swapPick === p.id) pe.classList.add('swap-pick');
       } else if (myTurn && p.mine && isMovable(p.kind)) {
@@ -362,11 +364,18 @@
   function updateStatusBar() {
     var setup = $('setup-controls'), chat = $('chat-controls');
     if (view.phase === 'setup') {
-      setup.hidden = false; chat.hidden = true;
-      $('btn-ready').disabled = !!readyState[myTeam];
-      $('btn-shuffle').disabled = !!readyState[myTeam];
-      if (readyState[myTeam]) setStatus('Ready! Waiting for opponent…');
-      else setStatus('Arrange your army, then press Ready');
+      var oppT = myTeam === 'red' ? 'blue' : 'red';
+      if (gameAdvanced && connected[oppT]) {
+        // advanced mode: both present, arrange your army then press Ready
+        setup.hidden = false; chat.hidden = true;
+        $('btn-ready').disabled = !!readyState[myTeam];
+        $('btn-shuffle').disabled = !!readyState[myTeam];
+        setStatus(readyState[myTeam] ? 'Ready! Waiting for opponent…' : 'Arrange your army, then press Ready');
+      } else {
+        // basic mode (like the video): just waiting for the opponent to join
+        setup.hidden = true; chat.hidden = true;
+        setStatus('Waiting for an opponent to join…');
+      }
     } else {
       setup.hidden = true; chat.hidden = false;
       var inPlay = view.phase === 'playing' || view.phase === 'tiebreak';
@@ -516,7 +525,7 @@
     var id = ev.currentTarget.dataset.id;
     var p = pieceView(id); if (!p) return;
 
-    if (view.phase === 'setup' && p.mine) {
+    if (gameAdvanced && view.phase === 'setup' && p.mine) {
       SFX.select();
       if (swapPick === null) { swapPick = id; decoratePieces(); }
       else if (swapPick === id) { swapPick = null; decoratePieces(); }
@@ -624,7 +633,8 @@
     $('btn-create').addEventListener('click', function () {
       SFX.resume();
       myName = ($('name-input').value || 'Player').trim().slice(0, 20) || 'Player';
-      send({ type: 'create', team: pickedTeam, name: myName });
+      var advanced = !!($('adv-mode') && $('adv-mode').checked);
+      send({ type: 'create', team: pickedTeam, name: myName, advanced: advanced });
       SFX.click();
     });
     $('btn-join').addEventListener('click', doJoin);
