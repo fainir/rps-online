@@ -7,8 +7,10 @@
   function $(id) { return document.getElementById(id); }
   function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
 
-  var KIND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️', flag: '🚩', trap: '💣' };
-  var HAND_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
+  // Weapons (like the video: stone / scroll / scissors), not hand gestures.
+  var KIND_EMOJI = { rock: '🪨', paper: '📜', scissors: '✂️', flag: '🚩', trap: '💣' };
+  var HAND_EMOJI = { rock: '🪨', paper: '📜', scissors: '✂️' };
+  var KIND_LABEL = { rock: 'Rock', paper: 'Paper', scissors: 'Scissors' };
 
   // Original chibi-warrior character (my own SVG art), fully rigged for animation:
   // separate legs (walk cycle), torso (breathe), arms (swing), head + topknot (bob),
@@ -448,11 +450,42 @@
     }
   }
 
-  // ---- tiebreak modal ----
+  // ---- "Choose Your Weapon" tiebreak modal ----
+  var tbTimer = null, tbCount = 5;
   function colorTiebreakHands() {
     var opp = myTeam === 'red' ? 'blue' : 'red';
     $('tb-you').style.boxShadow = '0 0 0 2px var(--' + (myTeam || 'red') + ')';
     $('tb-opp').style.boxShadow = '0 0 0 2px var(--' + opp + ')';
+  }
+  function stopTbCountdown() { if (tbTimer) { clearInterval(tbTimer); tbTimer = null; } }
+  function startTbCountdown() {
+    stopTbCountdown();
+    tbCount = 5;
+    var el = $('tb-timer');
+    el.textContent = tbCount; el.classList.remove('urgent');
+    tbTimer = setInterval(function () {
+      tbCount--;
+      if (tbCount <= 0) {
+        stopTbCountdown();
+        $('tb-timer').textContent = '0';
+        // out of time — auto-pick a random weapon so the duel never stalls
+        if (view && view.phase === 'tiebreak' && !(view.pending && view.pending.iThrew)) {
+          var picks = ['rock', 'paper', 'scissors'];
+          throwWeapon(picks[Math.floor(Math.random() * 3)], true);
+        }
+        return;
+      }
+      $('tb-timer').textContent = tbCount;
+      if (tbCount <= 2) $('tb-timer').classList.add('urgent');
+    }, 1000);
+  }
+  function throwWeapon(choice, auto) {
+    stopTbCountdown();
+    $('tb-you').textContent = HAND_EMOJI[choice];
+    send({ type: 'throw', choice: choice });
+    $('tiebreak').querySelectorAll('.tb-btn').forEach(function (x) { x.disabled = true; });
+    $('tb-status').textContent = auto ? "Time! Auto-picked " + KIND_LABEL[choice] : 'Waiting for opponent…';
+    if (!auto) SFX.click();
   }
   function renderTiebreak() {
     var tb = $('tiebreak');
@@ -462,15 +495,19 @@
       colorTiebreakHands();
       var threw = view.pending && view.pending.iThrew;
       btns.forEach(function (b) { b.disabled = !!threw; });
-      $('tb-status').textContent = threw ? 'Waiting for opponent…' : 'Pick your throw';
-      if (!threw) { $('tb-you').textContent = '?'; }
+      $('tb-timer').style.visibility = threw ? 'hidden' : 'visible';
+      if (threw) { stopTbCountdown(); $('tb-status').textContent = 'Waiting for opponent…'; }
+      else { $('tb-status').textContent = 'Pick your weapon'; $('tb-you').textContent = '?'; if (!tbTimer) startTbCountdown(); }
     } else if (holdTiebreak) {
-      // keep showing the resolved throw briefly before the modal closes
+      // keep showing the resolved weapons briefly before the modal closes
       tb.dataset.show = 'true';
+      stopTbCountdown();
+      $('tb-timer').style.visibility = 'hidden';
       btns.forEach(function (b) { b.disabled = true; });
       $('tb-status').textContent = 'Decided!';
     } else {
       tb.dataset.show = 'false';
+      stopTbCountdown();
     }
   }
   function resetTiebreakHands(both) {
@@ -478,7 +515,8 @@
     if (both) $('tb-opp').textContent = '?';
     var btns = $('tiebreak').querySelectorAll('.tb-btn');
     btns.forEach(function (b) { b.disabled = false; });
-    $('tb-status').textContent = 'Pick your throw';
+    $('tb-status').textContent = 'Pick your weapon';
+    startTbCountdown();
   }
   function onTiebreakThrow(e) {
     var myChoice = e.attackerTeam === myTeam ? e.attackerChoice : e.defenderChoice;
@@ -672,15 +710,11 @@
       SFX.click();
     });
 
-    // tiebreak buttons
+    // "choose your weapon" buttons
     $('tiebreak').querySelectorAll('.tb-btn').forEach(function (b) {
       b.addEventListener('click', function () {
-        var choice = b.dataset.choice;
-        $('tb-you').textContent = HAND_EMOJI[choice];
-        send({ type: 'throw', choice: choice });
-        $('tiebreak').querySelectorAll('.tb-btn').forEach(function (x) { x.disabled = true; });
-        $('tb-status').textContent = 'Waiting for opponent…';
-        SFX.click();
+        if (b.disabled) return;
+        throwWeapon(b.dataset.choice, false);
       });
     });
 

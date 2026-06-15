@@ -101,21 +101,22 @@
           <!-- Captured / eliminated armies -->
           <div class="captured-tray" id="captured-tray" hidden></div>
 
-          <!-- Tiebreak modal -->
+          <!-- Tiebreak "Choose Your Weapon" modal -->
           <div class="tiebreak" id="tiebreak" aria-live="polite">
             <div class="tb-card">
-              <p class="tb-title">TIE! Throw to break it</p>
+              <p class="tb-title">It's a tie! <span>Choose your weapon</span></p>
+              <div class="tb-timer" id="tb-timer">5</div>
               <div class="tb-hands">
                 <div class="tb-hand tb-you" id="tb-you">?</div>
                 <span class="tb-vs">VS</span>
                 <div class="tb-hand tb-opp" id="tb-opp">?</div>
               </div>
               <div class="tb-buttons">
-                <button class="tb-btn" data-choice="rock" title="Rock">✊</button>
-                <button class="tb-btn" data-choice="paper" title="Paper">✋</button>
-                <button class="tb-btn" data-choice="scissors" title="Scissors">✌️</button>
+                <button class="tb-btn" data-choice="rock" title="Rock">🪨</button>
+                <button class="tb-btn" data-choice="paper" title="Paper">📜</button>
+                <button class="tb-btn" data-choice="scissors" title="Scissors">✂️</button>
               </div>
-              <p class="tb-status" id="tb-status">Pick your throw</p>
+              <p class="tb-status" id="tb-status">Pick your weapon</p>
             </div>
           </div>
         </div>

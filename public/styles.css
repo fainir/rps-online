@@ -364,7 +364,16 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px}
   border-radius:14px;padding:16px 18px;text-align:center;
   box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:230px;
 }
-.tb-title{font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--red-d);margin:0 0 12px}
+.tb-title{font-family:var(--font-display);font-weight:800;font-size:16px;color:var(--red-d);margin:0 0 8px;line-height:1.15}
+.tb-title span{display:block;font-size:20px;color:var(--green-0)}
+.tb-timer{
+  width:42px;height:42px;margin:0 auto 10px;border-radius:50%;
+  display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:22px;
+  color:#fff;background:radial-gradient(circle at 50% 35%, #8fc63d, #5c8a16);
+  border:3px solid var(--green-0);box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.tb-timer.urgent{background:radial-gradient(circle at 50% 35%, #ff7a6e, #c0241a);animation:tick .5s ease-in-out infinite}
+@keyframes tick{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
 .tb-hands{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px}
 .tb-hand{
   width:60px;height:60px;border-radius:14px;display:grid;place-items:center;
